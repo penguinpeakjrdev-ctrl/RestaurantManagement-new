@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import mailConfig from "../config/mailConfig.js";
+import mailConfig from "../Config/mailConfig.js";
 import {generateOrderReceiptHTML, generateOrderReceiptText, } from "../templates/orderReceiptTemplate.js";
 import { generateOrderCancelledHTML } from "../templates/orderCancelledTemplate.js";
 

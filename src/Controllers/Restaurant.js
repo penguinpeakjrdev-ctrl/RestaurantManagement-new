@@ -1,9 +1,6 @@
 import restaurant from "../Models/Restaurant.js";
 import jwt from "jsonwebtoken";
-import {
-  approvalEmailTemplate,
-  rejectionEmailTemplate,
-} from "../templates/EmailRestaurantStatusMail.js";
+import {approvalEmailTemplate,rejectionEmailTemplate,} from "../templates/EmailRestaurantStatusMail.js";
 import { sendMail } from "../services/emailService.js";
 import UserProSch from "../Models/RestaurantProfiles.js";
 

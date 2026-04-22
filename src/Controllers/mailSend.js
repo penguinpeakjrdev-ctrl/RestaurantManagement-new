@@ -1,10 +1,9 @@
-import sendMail from "../services/mailService.js";
-
+// import sendMail from "../services/mailService.js";
+import { sendMail } from "../services/emailService.js";
 export default async function sendTestMail(req, res) {
   const { to, subject, message } = req.body;
 
 
-  
   try {
     const result = await sendMail(to, subject, message);
     res.status(200).json({ success: true, result });
