@@ -1,6 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 // Define config object
 const mailConfig = {
   host: process.env.MAIL_HOST,
