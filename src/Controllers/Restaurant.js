@@ -1,0 +1,333 @@
+import restaurant from "../Models/Restaurant.js";
+import jwt from "jsonwebtoken";
+import {
+  approvalEmailTemplate,
+  rejectionEmailTemplate,
+} from "../templates/EmailRestaurantStatusMail.js";
+import { sendMail } from "../services/emailService.js";
+import UserProSch from "../Models/RestaurantProfiles.js";
+
+// Create Restaurant
+export const createRestaurant = async (req, res) => {
+  const { name, ownerName, email, Password, phone, address, cuisines } =
+    req.body;
+  try {
+    const existingResto = await restaurant.findOne({ email: req.body.email });
+
+    if (existingResto) {
+      return res.status(400).json({ message: "Restaurant already registered" });
+    }
+
+    const newResto = await restaurant.create({
+      name,
+      ownerName,
+      email,
+      Password,
+      phone,
+      address,
+      cuisines,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Restaurant Created Successfully!",
+      data: newResto,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to Create Restaurant",
+      error: error.message,
+    });
+  }
+};
+
+// login for Restaurant
+export const loginRestaurant = async (req, res) => {
+  const { email, Password } = req.body;
+
+  try {
+    // Find the restaurant by email
+    const resto = await restaurant.findOne({ email: email });
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Check approval status
+    if (resto.status === "pending") {
+      return res.status(403).json({
+        message: "Your request is still pending approval by admin.",
+      });
+    }
+
+    if (resto.status === "rejected") {
+      return res.status(403).json({
+        message: "Your restaurant registration has been rejected.",
+      });
+    }
+
+    // Check password
+    if (resto.Password !== Password) {
+      return res.status(401).json({
+        message: "Invalid Email or Password",
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: resto._id, role: resto.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+
+    // get userprofile Image
+    const userProfile = await UserProSch.findOne({
+      restaurantId: resto._id,
+    }).select("imageurl");
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+      restaurant: {
+        id: resto._id,
+        name: resto.name,
+        email: resto.email,
+        role: resto.role,
+        imageurl: userProfile ? userProfile.imageurl || null : null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Login failed",
+      error: error.message,
+    });
+  }
+};
+
+// get all Restaurants for admin
+export const getAllRestaurants = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    const { page = 1, limit = 5, search = "", status } = req.query;
+
+    const query = {};
+
+    // Search by name or email
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Status filter
+    if (status) {
+      query.status = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [restaurants, total] = await Promise.all([
+      restaurant
+        .find(query)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .select("-Password"),
+      restaurant.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      restaurants,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total,
+    });
+  } catch (error) {
+    console.error("Error fetching restaurants:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Notification api for admin
+export const getnotification = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  try {
+    // return pending restaurants
+    const pendingUsers = await restaurant
+      .find({ status: "pending", notified: { $ne: true } })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: pendingUsers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Restaurant GetById
+export const RestoFindById = async (req, res) => {
+  try {
+    const getResto = await restaurant.findById(req.params.id);
+
+    if (!getResto) {
+      return res.status(404).json({ message: "Restaurant Not Found" });
+    }
+
+    res.status(200).json({
+      message: "Restaurant Fetch By Id Successfully",
+      data: getResto,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed To Fetch Restaurant By Id ",
+      error: error.message,
+    });
+  }
+};
+
+// Approve restaurant
+export const approveRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const resto = await restaurant.findByIdAndUpdate(
+      id,
+      { status: "approved" },
+      { new: true }
+    );
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Send approval email
+    await sendMail(
+      resto.email,
+      "Restaurant Approval Notification",
+      "Your restaurant has been approved!",
+      approvalEmailTemplate(resto.name, resto.ownerName)
+    );
+
+    res
+      .status(200)
+      .json({ message: "Restaurant approved successfully", resto });
+  } catch (error) {
+    console.error("Error approving restaurant:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Reject restaurant
+export const rejectRestaurant = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const resto = await restaurant.findByIdAndUpdate(
+      id,
+      { status: "rejected" },
+      { new: true }
+    );
+
+    if (!resto) {
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Send rejection email
+    const emailContent = rejectionEmailTemplate(resto.name, resto.ownerName);
+
+    await sendMail(
+      resto.email,
+      "Restaurant Application Update",
+      "Your restaurant application has been reviewed",
+      emailContent
+    );
+
+    res
+      .status(200)
+      .json({ message: "Restaurant rejected successfully", resto });
+  } catch (error) {
+    console.error("Error rejecting restaurant:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// notification read Status Update api
+export const markAsNotified = async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied." });
+  }
+
+  const { id } = req.params;
+
+  try {
+    const updated = await restaurant.findByIdAndUpdate(
+      id,
+      { $set: { notified: true } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Restaurant not found" });
+    }
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update Restaurant
+export const updateRestaurant = async (req, res) => {
+  try {
+    const Resto = await restaurant.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
+    if (!Resto) {
+      return res.status(404).json({
+        message: "Restaurant Not Found",
+      });
+    }
+    res.status(200).json({
+      message: "Restaurant Update SuccessFully!",
+      data: Resto,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed To Update Restaurant",
+      error: error.message,
+    });
+  }
+};
+
+// Delete Restaurant
+export const deleteRestaurant = async (req, res) => {
+  try {
+    const Resto = await restaurant.findByIdAndDelete(req.params.id);
+
+    if (!Resto) {
+      return res.status(404).json({
+        message: "Restaurant Not Found",
+      });
+    }
+    res.status(200).json({
+      message: "Restaurant Delete SuccessFully!",
+      data: Resto,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed To Delete Restaurant",
+      error: error.message,
+    });
+  }
+};
