@@ -6,10 +6,10 @@ import path from "path";
 import helmet from "helmet";
 import { fileURLToPath } from "url";
 
-// ✅ Load env FIRST before anything else
+// Load env FIRST before anything else
 dotenv.config();
 
-// ✅ Import Routes
+// Import Routes
 import { FoodMenu_Routes } from "./src/Routes/Food_menu.js";
 import { Restorant_Routes } from "./src/Routes/Restaurant.js";
 import { User_Routes } from "./src/Routes/User.js";
@@ -25,18 +25,18 @@ import { UserProfile_Routes } from "./src/Routes/UserProfile.js";
 
 const app = express();
 
-// ✅ Middleware
+// Middleware
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(morgan("dev"));
 app.use(helmet());
 
-// ✅ Setup path variables
+// Setup path variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Static files
+// Static files
 app.use(
   "/uploads",
   express.static(path.join(__dirname, "src/uploads"), {
@@ -46,7 +46,7 @@ app.use(
   })
 );
 
-// ✅ Health Check Route
+// Health Check Route
 app.get("/", (req, res) => {
   res.status(200).json({ 
     message: "Backend Server is Running ✅", 
@@ -55,7 +55,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// ✅ Routes
+// Routes
 app.use("/user", User_Routes);
 app.use("/userProfile", UserProfile_Routes);
 app.use("/dashboard", Dashboard_Routes);
@@ -68,7 +68,7 @@ app.use("/review", Review_Routes);
 app.use("/cart", Cart_Routes);
 app.use("/restauruntProfile", RestaurantProfile_Routes);
 
-// ✅ 404 Handler
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({ 
     message: "Route not found", 
@@ -77,7 +77,7 @@ app.use((req, res) => {
   });
 });
 
-// ✅ Global Error Handler
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
   res.status(err.status || 500).json({
@@ -86,7 +86,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Connect DB and Start Server
+// Connect DB and Start Server
 const PORT = process.env.PORT || 5000;
 
 (async () => {

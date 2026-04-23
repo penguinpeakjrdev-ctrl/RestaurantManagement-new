@@ -7,19 +7,7 @@ export const generateOrderReceiptHTML = (
   imageurl,
   restaurantName
 ) => {
-  const {
-    orderNumber,
-    items,
-    totalAmount,
-    deliveryAddress,
-    orderStatus,
-    paymentStatus,
-    createdAt,
-    subTotal,
-    taxAmount,
-    discount,
-    deliveryCharge,
-  } = order;
+  const {orderNumber, items, totalAmount, deliveryAddress, orderStatus, paymentStatus, createdAt, subTotal, taxAmount, discount, deliveryCharge} = order;
 
   // Calculate totals properly
   const calculatedSubTotal = subTotal || calculateOrderTotal(items);
