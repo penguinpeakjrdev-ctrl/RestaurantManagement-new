@@ -235,9 +235,7 @@ p strong { color: #333; font-weight: 600; }
           </div>
         </div>
         <p>Hi <strong>${ownerName}</strong>,</p>
-        <p>
-          Great news — <strong>${restaurantName}</strong> has been approved and is now live on Charcole Chicken! Hungry customers in your area can already discover and order from you.
-        </p>
+        <p>Great news — <strong>${restaurantName}</strong> has been approved and is now live on Charcole Chicken! Hungry customers in your area can already discover and order from you.</p>
         <div class="features-grid">
           <div class="feature-item">
             <div class="feature-icon">
